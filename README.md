@@ -2,7 +2,9 @@ SCZ-BasicEncodingRules-iOS
 ==========================
 
 Implementation of Basic Encoding Rules to enable import of RSA keys to iOS 
-KeyChain using exponent. Let's say you already have a modulus and exponent from 
+KeyChain using exponent. Code targets iOS 5 with ARC. 
+
+Let's say you already have a modulus and exponent from 
 an RSA public key as an NSData in variables named pubKeyModData and 
 pubKeyModData. Then the following code will create an NSData containing that RSA 
 public key, which you can then insert into the iOS or OS X Keychain.
