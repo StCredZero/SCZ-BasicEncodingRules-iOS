@@ -118,6 +118,11 @@
     return lengthStorageData;
 }
 
+- (id)berDecode {
+    [self raiseUnimplemented];
+    return nil;
+}
+
 @end
 
 
@@ -132,7 +137,7 @@
 
 - (uint8_t*)berTag
 {
-    static uint8_t integerTag[] = { 0x02 };
+    static uint8_t integerTag[] = { BER_INTEGER };
     return integerTag;
 }
 
@@ -142,6 +147,74 @@
     [berData appendData:[self berHeader]];
     [berData appendData:self];
     return berData;
+}
+
+- (id)berDecode
+{
+    return [self berDecodeFromStart:0 to:[self length] - 1];
+}
+
+- (id)berDecodeFromStart:(NSUInteger)start to:(NSUInteger)end
+{
+    uint8_t *bytes = (uint8_t*)[self bytes];
+    
+    if (bytes[start] == ( kBerTypeConstructed | BER_SEQUENCE ))
+    {
+        return [self berDecodeAsArrayFrom:start to:end];
+    }
+    else if (bytes[start] == BER_INTEGER )
+    {
+        return [self berDecodeAsDataFrom:start to:end];
+    }
+    return nil;
+}
+
+- (NSUInteger)berDecodeSizeAt:(NSUInteger*)iterator
+{
+    uint8_t *bytes = (uint8_t*)[self bytes];
+    NSUInteger iter = *iterator;
+    NSUInteger container_length = 0, num_bytes = 1;
+        
+    iter++; // Skip the tag byte
+    if (bytes[iter] > 0x80)
+    {
+        num_bytes = bytes[iter] - 0x80;
+        iter++;
+    }
+    for (NSUInteger i = 0; i < num_bytes; i++)
+    {
+        container_length = (container_length * 0x100) + bytes[iter + i];
+    }
+    *iterator = iter + num_bytes;
+    return container_length;
+}
+
+- (NSMutableArray*)berDecodeAsArrayFrom:(NSUInteger)start to:(NSUInteger)end
+{
+    NSUInteger iterator = start;
+    NSUInteger container_length, array_contents_end;
+
+    container_length = [self berDecodeSizeAt:&iterator];
+    array_contents_end = iterator + container_length;
+    
+    NSMutableArray *newArray = [[NSMutableArray alloc] init];
+    while (iterator < array_contents_end)
+    {
+        NSUInteger item_start = iterator;
+        NSUInteger item_length = [self berDecodeSizeAt:&iterator];
+        NSUInteger item_end = iterator + item_length - 1;
+        [newArray addObject: [self berDecodeFromStart:item_start to:item_end]];
+        iterator = item_end + 1;
+    }
+    return newArray;
+}
+                
+- (NSData*)berDecodeAsDataFrom:(NSUInteger)start to:(NSUInteger)end
+{
+    NSUInteger iterator = start;
+    NSUInteger item_length = [self berDecodeSizeAt:&iterator];
+    NSUInteger item_start = iterator;
+    return [self subdataWithRange:NSMakeRange(item_start, item_length)];
 }
 
 @end
@@ -160,7 +233,7 @@
 
 - (uint8_t*)berTag
 {
-    static uint8_t bitfieldTag[] = { 0x30 };
+    static uint8_t bitfieldTag[] = { (kBerTypeConstructed | BER_SEQUENCE) };
     return bitfieldTag;
 }
 
