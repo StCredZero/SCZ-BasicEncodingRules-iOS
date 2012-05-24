@@ -94,19 +94,16 @@
     [testArray addObject:item1];
     [testArray addObject:item2];
     NSData *testData = [testArray berData];
-    
-    
-    NSLog(@"testData: %@", [self hexadecimalFor:testData]);
-    
+        
     NSMutableArray *testArray2 = [testData berDecode];
     
     STAssertEqualObjects(testArray, testArray2,
-                         @"Big items failed");
+                         @"Big items decode failed");
     
     NSData *testData2 = [testArray2 berData];
     
-    NSLog(@"testData: %@", [self hexadecimalFor:testData2]);
-    
+    STAssertEqualObjects(testData, testData2,
+                         @"Big items failed");
 }
 
 - (void)testNestedArrays
@@ -122,18 +119,15 @@
     [testArray addObject:item2];
     NSData *testData = [testArray berData];
     
-    
-    NSLog(@"testData: %@", [self hexadecimalFor:testData]);
-    
     NSMutableArray *testArray2 = [testData berDecode];
     
     STAssertEqualObjects(testArray, testArray2,
-                         @"Big items failed");
+                         @"Nested arrays failed");
     
     NSData *testData2 = [testArray2 berData];
     
-    NSLog(@"testData: %@", [self hexadecimalFor:testData2]);
-    
+    STAssertEqualObjects(testData, testData2,
+                         @"Nested arrays data failed");
 }
 
 @end
