@@ -32,6 +32,8 @@
 
 @implementation NSObject (BasicEncodingRules)
 
+#pragma mark - NSObject Encoding
+
 - (void)raiseUnimplemented {
     [NSException 
      raise:@"Invalid BER translation" 
@@ -118,6 +120,8 @@
     return lengthStorageData;
 }
 
+#pragma mark - NSObject Decoding
+
 - (id)berDecode {
     [self raiseUnimplemented];
     return nil;
@@ -127,6 +131,8 @@
 
 
 @implementation NSData (BasicEncodingRules)
+
+#pragma mark - NSData Encoding
 
 - (NSUInteger)berContentsLengthBytes
 {
@@ -149,6 +155,8 @@
     return berData;
 }
 
+#pragma mark - NSData Decoding
+
 - (id)berDecode
 {
     return [self berDecodeFromStart:0 to:[self length] - 1];
@@ -166,6 +174,7 @@
     {
         return [self berDecodeAsDataFrom:start to:end];
     }
+    [self raiseUnimplemented];
     return nil;
 }
 
@@ -202,9 +211,9 @@
     {
         NSUInteger item_start = iterator;
         NSUInteger item_length = [self berDecodeSizeAt:&iterator];
-        NSUInteger item_end = iterator + item_length - 1;
-        [newArray addObject: [self berDecodeFromStart:item_start to:item_end]];
-        iterator = item_end + 1;
+        NSUInteger next_item_start = iterator + item_length;
+        [newArray addObject: [self berDecodeFromStart:item_start to:(next_item_start - 1)]];
+        iterator = next_item_start;
     }
     return newArray;
 }
@@ -221,6 +230,8 @@
 
 
 @implementation NSArray (BasicEncodingRules)
+
+#pragma mark - NSArray Encoding
 
 - (NSUInteger)berContentsLengthBytes
 {
