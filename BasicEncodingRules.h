@@ -29,6 +29,17 @@
 //
 
 #import <Foundation/Foundation.h>
+#include <objc/objc-runtime.h>
+
+// Bits 7 and 8 
+//      8 7 6 5 4 3 2 1
+//      ---------------
+//      X X 0 0 0 0 0 0
+
+#define kBerClassUniversal          0x00
+#define kBerClassApplication        0x40
+#define kBerClassContextSpecific    0x80
+#define kBerClassPrivate            0xC0
 
 // Bit 6 is primitive or constructed
 //      8 7 6 5 4 3 2 1
@@ -42,47 +53,61 @@
 //      ---------------
 //      0 0 0 X X X X X
 
-#define BER_EOC                 0X00
-#define BER_BOOLEAN             0X01
-#define BER_INTEGER             0X02
-#define BER_BIT_STRING          0X03
-#define BER_OCTET_STRING        0X04
-#define BER_NULL                0X05
-#define BER_OBJECT_IDENTIFIER   0X06
-#define BER_OBJECT_DESCRIPTOR   0X07
-#define BER_EXTERNAL            0X08
-#define BER_REAL                0X09
-#define BER_ENUMERATED          0X0A
-#define BER_EMBEDDED PDV        0X0B
-#define BER_UTF8STRING          0X0C
-#define BER_RELATIVE_OID        0X0D
-#define BER_RESERVED0X0E        0X0E
-#define BER_RESERVED0X0F        0X0F
-#define BER_SEQUENCE            0X10
-#define BER_SET                 0X11
-#define BER_NUMERICSTRING       0X12
-#define BER_PRINTABLESTRING     0X13
-#define BER_T61STRING           0X14
-#define BER_VIDEOTEXSTRING      0X15
-#define BER_IA5STRING           0X16
-#define BER_UTCTIME             0X17
-#define BER_GENERALIZEDTIME     0X18
-#define BER_GRAPHICSTRING       0X19
-#define BER_VISIBLESTRING       0X1A
-#define BER_GENERALSTRING       0X1B
-#define BER_UNIVERSALSTRING     0X1C
-#define BER_CHARACTER_STRING    0X1D
-#define BER_BMPSTRING           0X1E
-#define BER_USE_LONG_FORM       0X1F
+#define BER_EOC                 0x00
+#define BER_BOOLEAN             0x01
+#define BER_INTEGER             0x02
+#define BER_BIT_STRING          0x03
+#define BER_OCTET_STRING        0x04
+#define BER_NULL                0x05
+#define BER_OBJECT_IDENTIFIER   0x06
+#define BER_OBJECT_DESCRIPTOR   0x07
+#define BER_EXTERNAL            0x08
+#define BER_REAL                0x09
+#define BER_ENUMERATED          0x0A
+#define BER_EMBEDDED_PDV            0x0B
+#define BER_UTF8STRING          0x0C
+#define BER_RELATIVE_OID        0x0D
+#define BER_RESERVED0X0E        0x0E
+#define BER_RESERVED0X0F        0x0F
+#define BER_SEQUENCE            0x10
+#define BER_SET                 0x11
+#define BER_NUMERICSTRING       0x12
+#define BER_PRINTABLESTRING     0x13
+#define BER_T61STRING           0x14
+#define BER_VIDEOTEXSTRING      0x15
+#define BER_IA5STRING           0x16
+#define BER_UTCTIME             0x17
+#define BER_GENERALIZEDTIME     0x18
+#define BER_GRAPHICSTRING       0x19
+#define BER_VISIBLESTRING       0x1A
+#define BER_GENERALSTRING       0x1B
+#define BER_UNIVERSALSTRING     0x1C
+#define BER_CHARACTER_STRING    0x1D
+#define BER_BMPSTRING           0x1E
+#define BER_USE_LONG_FORM       0x1F
+
+#define BER_A0                      (kBerClassContextSpecific | kBerTypeConstructed)
+#define BER_SEQUENCE_CONSTRUCTED    (BER_SEQUENCE | kBerTypeConstructed)
+#define BER_SET_CONSTRUCTED         (BER_SET | kBerTypeConstructed)
+
 
 @interface NSObject (BasicEncodingRules)
 - (void)raiseUnimplemented;
+- (NSData*)zeroByteData;
 - (uint8_t*)berTag;
 - (NSData*)berHeader;
 - (NSData*)berData;
 - (NSUInteger)berLengthBytes;
 - (NSUInteger)berContentsLengthBytes;   
 - (id)berDecode;
+@end
+
+@interface NSString (BasicEncodingRules)
+- (uint8_t*)berTag;
+- (NSData*)berData;
+- (NSUInteger)berContentsLengthBytes;
+- (NSData*)berDataUsingEncoding:(NSStringEncoding)encoding;
+- (NSUInteger)berContentsLengthBytesUsingEncoding:(NSStringEncoding)encoding;
 @end
 
 @interface NSData (BasicEncodingRules)
@@ -96,3 +121,40 @@
 - (NSData*)berData;
 - (NSUInteger)berContentsLengthBytes;
 @end
+
+@interface NSNull (BasicEncodingRules)
+- (NSUInteger)berContentsLengthBytes;
+- (NSUInteger)berLengthBytes;
+- (uint8_t*)berTag;
+- (NSData*)lengthStorageData;
+- (NSData*)berData;
+@end
+
+@interface BerTaggedObject : NSObject {
+    uint8_t berTag[1];
+    id obj;
+}
+@property (nonatomic, assign) uint8_t berTagValue;
+@property (nonatomic, strong) id obj;
+- (uint8_t*)berTag;
+- (NSUInteger)berContentsLengthBytes;
+- (NSUInteger)berLengthBytes;
+- (NSString*)descriptionFormat;
+- (NSString*)description;
+- (NSData*)berBody;
+- (NSData*)berData;
+@end
+
+@interface BerTaggedCollection : BerTaggedObject {}
+@property (nonatomic, strong) NSMutableArray *collection;
+- (void)addObject:(id)anObject;
+@end
+
+@interface BerTaggedData : BerTaggedObject {}
+@property (nonatomic, strong) NSData *data;
+@end
+
+@interface BerTaggedString : BerTaggedObject {}
+@property (nonatomic, strong) NSString *string;
+@end
+
