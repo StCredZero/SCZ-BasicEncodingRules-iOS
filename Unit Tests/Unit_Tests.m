@@ -138,6 +138,8 @@
     NSMutableArray *result = [testData berDecode];
     NSData *testData2 = [result berData];
     NSLog(@"result: %@", [result description]);
+    STAssertEqualObjects(testData, testData2,
+                         @"Cert binaries are not the same");
 }
 
 @end

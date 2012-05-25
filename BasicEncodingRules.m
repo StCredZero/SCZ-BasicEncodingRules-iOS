@@ -402,9 +402,12 @@
     }
     return encoding;
 }
-- (NSData*)berData //WOW
+- (NSData*)berData 
 {
-    return [self.string berDataUsingEncoding:[self berStringEncoding]];
+    NSMutableData *berData = [[NSMutableData alloc] init];
+    [berData setData:[self.string berDataUsingEncoding:[self berStringEncoding]]];
+    [berData replaceBytesInRange:NSMakeRange(0,1) withBytes:[self berTag]];
+    return berData;
 }
 - (NSUInteger)berContentsLengthBytes
 {
@@ -500,7 +503,6 @@
             return [self berDecodeAsStringFrom:start to:end];
             break;
         case BER_A0:
-            NSLog(@"A0");
         case BER_BIT_STRING:
         case BER_OBJECT_IDENTIFIER:
             return [self berDecodeAsDataTagged:currentTag 
