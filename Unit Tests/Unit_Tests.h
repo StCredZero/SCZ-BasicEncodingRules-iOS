@@ -8,6 +8,7 @@
 
 #import <SenTestingKit/SenTestingKit.h>
 #import "BasicEncodingRules.h"
+#import "NSData+Base64.h"
 
 @interface Unit_Tests : SenTestCase
 

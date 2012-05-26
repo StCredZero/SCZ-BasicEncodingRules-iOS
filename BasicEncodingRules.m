@@ -30,144 +30,137 @@
 
 #import "BasicEncodingRules.h"
 
+@implementation BERVisitor : NSObject
+- (id)visitBERLeafNode:(id)leaf
+{
+    [self raiseUnimplemented];
+    return nil;
+}
+- (id)visitBERInteriorNode:(id)node
+{
+    [self raiseUnimplemented];
+    return nil;
+}
+@end
+
+
+@implementation BERStripVisitor : BERVisitor
+@synthesize currentCollection;
+@synthesize currentIndex;
+- (id)unwrapTaggedObject:(BerTaggedObject*)tagged
+{
+    if (self.currentCollection)
+    {
+        [self.currentCollection replaceObjectAtIndex:self.currentIndex 
+                                          withObject:tagged.obj];
+    }
+    return tagged.obj;
+}
+- (NSMutableArray*)newMutableArrayCopy:(NSArray*)oldArray
+{
+    NSMutableArray *newArray = [[NSMutableArray alloc] initWithCapacity:[oldArray count]];
+    self.currentCollection = newArray;
+    [self.currentCollection addObjectsFromArray:oldArray];
+    return newArray;
+}
+- (id)visitBERLeafNode:(id)leafNode
+{
+    BerTaggedObject *taggedObj = leafNode;
+    return [self unwrapTaggedObject:taggedObj];
+}
+- (id)visitBERInteriorNode:(id)node
+{
+    BerTaggedCollection *taggedCollection = node;
+    NSInteger currentCount = [taggedCollection.collection count];
+    
+    NSMutableArray *parent = self.currentCollection;
+    NSUInteger parentIndex = self.currentIndex;
+    NSMutableArray *newArray = [self newMutableArrayCopy:taggedCollection.collection];
+
+    for (NSInteger i = 0; i < currentCount; i++) 
+    {
+        self.currentIndex = i;
+        [[taggedCollection objectAtIndex:i] acceptBERVisitor:self];
+    }
+    
+    self.currentCollection = parent;
+    self.currentIndex = parentIndex;
+    [self unwrapTaggedObject:taggedCollection];
+    return newArray;
+}
+@end
+
+
+@implementation BERPrintVisitor : BERVisitor
+@synthesize indentLevel;
+@synthesize string;
+- (id) init
+{
+    if (self = [super init])
+    {
+        self.indentLevel = 0;
+        self.string = [[NSMutableString alloc] init];
+    }
+    return self;
+}
+- (id)visitBERLeafNode:(id)leaf
+{
+    [self berIndent];
+    [self.string appendFormat:@"%@ %@",
+     [leaf berTagDescription],
+     [leaf berContentsDescription]];
+    return nil;
+}
+- (id)visitBERInteriorNode:(id)node
+{
+    [self berIndent];
+    [self.string appendFormat:@"%@ (\n", [node berTagDescription]];
+    [self increaseIndent];
+    for (id childNode in [node collection]) 
+    {
+        [childNode acceptBERVisitor:self];
+        [self.string appendFormat:@"\n"];
+    }
+    [self decreaseIndent];
+    [self berIndent];
+    [self.string appendFormat:@")"];
+    return nil;
+}
+- (void)berIndent
+{
+    for (NSUInteger i = 0; i < self.indentLevel; i++)
+    {
+        [self.string appendFormat:@"%@", @"    "];
+    }
+}
+- (void)increaseIndent
+{
+    self.indentLevel = self.indentLevel + 1;
+}
+- (void)decreaseIndent
+{
+    self.indentLevel = self.indentLevel - 1;
+
+}
+@end
+
+
 
 @implementation NSObject (BasicEncodingRules)
 
 #pragma mark - NSObject Encoding
 
-- (void)raiseUnimplemented {
-    [NSException 
-     raise:@"Invalid BER translation" 
-     format:@"unimplemented for this type"];
+- (NSData*)berData
+{
+    NSMutableData *berData = [[NSMutableData  alloc] init];
+    [berData appendData:[self berHeader]];
+    [berData appendData:[self berContents]];
+    return berData;
 }
 
 - (uint8_t*)berTag {
     [self raiseUnimplemented];
     return nil;
-}
-
-- (NSData*)zeroByteData
-{
-    static uint8_t zero[] = { 0x00 };
-    NSMutableData *zeroByteData = [[NSMutableData  alloc] init];
-    [zeroByteData appendBytes:zero length:1];
-    return zeroByteData;
-}
-
-- (NSString*)berTagDescription
-{
-    uint8_t *tagBytes = [self berTag];
-    NSString *desc;
-    switch (tagBytes[0]) {
-        case BER_A0:
-            desc = @"BER_A0";
-            break;
-        case BER_EOC: 
-            desc = @"BER_EOC";                
-            break;              
-        case BER_BOOLEAN: 
-            desc = @"BER_BOOLEAN";            
-            break;              
-        case BER_INTEGER: 
-            desc = @"BER_INTEGER";            
-            break;              
-        case BER_BIT_STRING: 
-            desc = @"BER_BIT_STRING";         
-            break;              
-        case BER_OCTET_STRING: 
-            desc = @"BER_OCTET_STRING";       
-            break;              
-        case BER_NULL: 
-            desc = @"BER_NULL";               
-            break;              
-        case BER_OBJECT_IDENTIFIER: 
-            desc = @"BER_OBJECT_IDENTIFIER";  
-            break;              
-        case BER_OBJECT_DESCRIPTOR: 
-            desc = @"BER_OBJECT_DESCRIPTOR";  
-            break;              
-        case BER_EXTERNAL: 
-            desc = @"BER_EXTERNAL";           
-            break;              
-        case BER_REAL: 
-            desc = @"BER_REAL";               
-            break;              
-        case BER_ENUMERATED: 
-            desc = @"BER_ENUMERATED";         
-            break;              
-        case BER_EMBEDDED_PDV: 
-            desc = @"BER_EMBEDDED_PDV";        
-            break;              
-        case BER_UTF8STRING: 
-            desc = @"BER_UTF8STRING";         
-            break;              
-        case BER_RELATIVE_OID: 
-            desc = @"BER_RELATIVE_OID";       
-            break;              
-        case BER_RESERVED0X0E:
-            desc = @"BER_RESERVED0x0E";
-            break;              
-        case BER_RESERVED0X0F:
-            desc = @"BER_RESERVED0x0F";      
-            break;              
-        case BER_SEQUENCE: 
-            desc = @"BER_SEQUENCE";           
-            break;              
-        case BER_SET: 
-            desc = @"BER_SET";                
-            break;              
-        case BER_NUMERICSTRING: 
-            desc = @"BER_NUMERICSTRING";      
-            break;              
-        case BER_PRINTABLESTRING: 
-            desc = @"BER_PRINTABLESTRING";    
-            break;              
-        case BER_T61STRING: 
-            desc = @"BER_T61STRING";          
-            break;              
-        case BER_VIDEOTEXSTRING: 
-            desc = @"BER_VIDEOTEXSTRING";     
-            break;              
-        case BER_IA5STRING: 
-            desc = @"BER_IA5STRING";          
-            break;              
-        case BER_UTCTIME: 
-            desc = @"BER_UTCTIME";            
-            break;              
-        case BER_GENERALIZEDTIME: 
-            desc = @"BER_GENERALIZEDTIME";    
-            break;              
-        case BER_GRAPHICSTRING: 
-            desc = @"BER_GRAPHICSTRING";      
-            break;              
-        case BER_VISIBLESTRING: 
-            desc = @"BER_VISIBLESTRING";      
-            break;              
-        case BER_GENERALSTRING: 
-            desc = @"BER_GENERALSTRING";      
-            break;              
-        case BER_UNIVERSALSTRING: 
-            desc = @"BER_UNIVERSALSTRING";    
-            break;              
-        case BER_CHARACTER_STRING: 
-            desc = @"BER_CHARACTER_STRING";   
-            break;              
-        case BER_BMPSTRING: 
-            desc = @"BER_BMPSTRING";          
-            break;              
-        case BER_USE_LONG_FORM: 
-            desc = @"BER_USE_LONG_FORM";      
-            break;       
-        case BER_SEQUENCE_CONSTRUCTED:
-            desc = @"BER_SEQUENCE_CONSTRUCTED";
-            break;
-        case BER_SET_CONSTRUCTED:
-            desc = @"BER_SET_CONSTRUCTED";
-            break;
-        default:
-            desc = @"UNKNOWN";
-    }
-    return [NSString stringWithString:desc]; 
 }
 
 - (NSData*)berHeader
@@ -178,7 +171,7 @@
     return berHeader;
 }
 
-- (NSData*)berData {
+- (NSData*)berContents {
     [self raiseUnimplemented];
     return nil;
 }
@@ -192,16 +185,10 @@
     return 2 + [self lengthBytesLog8] + berContentsLengthBytes; 
 }
 
-- (NSUInteger)berContentsLengthBytes {
+- (NSUInteger)berContentsLengthBytes 
+{
     [self raiseUnimplemented];
     return 0;
-}
-
-- (void)raiseBerExceptionForLengthZero:(NSInteger)lengthBytes {
-    if (lengthBytes == 0)
-        [NSException 
-         raise:@"Invalid length value" 
-         format:@"byte length of 0 is invalid"];
 }
 
 - (NSUInteger)lengthBytesLog8
@@ -252,11 +239,171 @@
     return nil;
 }
 
+#pragma mark - BERVisitor
+
+- (void)acceptBERVisitor:(BERVisitor*)visitor
+{
+    [visitor visitBERLeafNode:(id)self];
+}
+
+#pragma mark - NSObject Printing
+
+- (NSString*)berContentsDescription
+{
+    return [NSString string];
+}
+
+#pragma mark - NSObject Utility
+
+- (NSData*)zeroByteData
+{
+    static uint8_t zero[] = { 0x00 };
+    NSMutableData *zeroByteData = [[NSMutableData  alloc] init];
+    [zeroByteData appendBytes:zero length:1];
+    return zeroByteData;
+}
+
+- (void)raiseUnimplemented {
+    [NSException 
+     raise:@"Invalid BER translation" 
+     format:@"unimplemented for this type"];
+}
+
+- (void)raiseBerExceptionForLengthZero:(NSInteger)lengthBytes {
+    if (lengthBytes == 0)
+        [NSException 
+         raise:@"Invalid length value" 
+         format:@"byte length of 0 is invalid"];
+}
+
+- (NSString*)berTagDescription
+{
+    uint8_t *tagBytes = [self berTag];
+    NSString *desc;
+    switch (tagBytes[0]) {
+        case BER_A0:
+            desc = @"A0";
+            break;
+        case BER_EOC: 
+            desc = @"EOC";                
+            break;              
+        case BER_BOOLEAN: 
+            desc = @"BOOL";            
+            break;              
+        case BER_INTEGER: 
+            desc = @"INTEGER";            
+            break;              
+        case BER_BIT_STRING: 
+            desc = @"BIT_STR";         
+            break;              
+        case BER_OCTET_STRING: 
+            desc = @"OCTET_STR";       
+            break;              
+        case BER_NULL: 
+            desc = @"NULL";               
+            break;              
+        case BER_OBJECT_IDENTIFIER: 
+            desc = @"OID";  
+            break;              
+        case BER_OBJECT_DESCRIPTOR: 
+            desc = @"OBJ_DESC";  
+            break;              
+        case BER_EXTERNAL: 
+            desc = @"EXTERNAL";           
+            break;              
+        case BER_REAL: 
+            desc = @"REAL";               
+            break;              
+        case BER_ENUMERATED: 
+            desc = @"ENUM";         
+            break;              
+        case BER_EMBEDDED_PDV: 
+            desc = @"EMBED_PDV";        
+            break;              
+        case BER_UTF8STRING: 
+            desc = @"UTF8_STR";         
+            break;              
+        case BER_RELATIVE_OID: 
+            desc = @"RELATIVE_OID";       
+            break;              
+        case BER_RESERVED0X0E:
+            desc = @"RESERVED0x0E";
+            break;              
+        case BER_RESERVED0X0F:
+            desc = @"RESERVED0x0F";      
+            break;              
+        case BER_SEQUENCE: 
+            desc = @"SEQ";           
+            break;              
+        case BER_SET: 
+            desc = @"SET";                
+            break;              
+        case BER_NUMERICSTRING: 
+            desc = @"NUM_STR";      
+            break;              
+        case BER_PRINTABLESTRING: 
+            desc = @"PRINTABLE_STR";    
+            break;              
+        case BER_T61STRING: 
+            desc = @"T61_STR";          
+            break;              
+        case BER_VIDEOTEXSTRING: 
+            desc = @"VIDTEX_STR";     
+            break;              
+        case BER_IA5STRING: 
+            desc = @"IA5_STR";          
+            break;              
+        case BER_UTCTIME: 
+            desc = @"UTCTIME";            
+            break;              
+        case BER_GENERALIZEDTIME: 
+            desc = @"GEN_TIME";    
+            break;              
+        case BER_GRAPHICSTRING: 
+            desc = @"GRAPHIC_STR";      
+            break;              
+        case BER_VISIBLESTRING: 
+            desc = @"VIS_STR";      
+            break;              
+        case BER_GENERALSTRING: 
+            desc = @"GEN_STR";      
+            break;              
+        case BER_UNIVERSALSTRING: 
+            desc = @"UNIV_STR";    
+            break;              
+        case BER_CHARACTER_STRING: 
+            desc = @"CHAR_STR";   
+            break;              
+        case BER_BMPSTRING: 
+            desc = @"BMP_STR";          
+            break;              
+        case BER_USE_LONG_FORM: 
+            desc = @"USE_LONG_FORM";      
+            break;       
+        case BER_SEQUENCE_CONSTRUCTED:
+            desc = @"SEQ_CONSTR";
+            break;
+        case BER_SET_CONSTRUCTED:
+            desc = @"SET_CONSTR";
+            break;
+        default:
+            desc = @"UNKNOWN";
+    }
+    return [NSString stringWithString:desc]; 
+}
+
 @end
 
 #pragma mark - BER Subclasses
-@implementation BerTaggedObject : NSObject
-@synthesize obj;
+@implementation BerNull : NSObject
+- (void)beMutable
+{
+
+}
+- (id)unwrapped
+{
+    return [NSNull null];
+}
 - (uint8_t*)berTag
 {
     return berTag;
@@ -271,14 +418,50 @@
 }
 - (NSUInteger)berContentsLengthBytes
 {
+    return 0;
+}
+- (NSUInteger)berLengthBytes
+{
+    return 2;
+}
+- (NSData*)lengthStorageData
+{
+    return [self zeroByteData];
+} 
+
+- (NSString*)description
+{
+    return [self berTagDescription];
+}
+@end
+
+@implementation BerTaggedObject : BerNull
+@synthesize obj;
+- (void)beMutable
+{
+    
+}
+- (id)unwrapped
+{
+    return self.obj;
+}
+- (BOOL)isEqual:(id)other
+{   
+    if ([other isKindOfClass:[BerTaggedObject class]])
+    {
+        BerTaggedObject *taggedObj = other;
+        return (self.berTagValue == taggedObj.berTagValue 
+                && [self.obj isEqual:taggedObj.obj]);
+    }
+    return NO;
+}
+- (NSUInteger)berContentsLengthBytes
+{
     if (self.obj)
     {
         return [self.obj berContentsLengthBytes];
     }
-    else
-    {
-        return 0;
-    }
+    return [super berContentsLengthBytes];
 }
 - (NSUInteger)berLengthBytes
 {
@@ -286,10 +469,7 @@
     {
         return [self.obj berLengthBytes];
     }
-    else
-    {
-        return 2;
-    }
+    return [super berLengthBytes];
 }
 - (NSString*)descriptionFormat
 {
@@ -303,52 +483,53 @@
                 [self berTagDescription], 
                 [self.obj description]];
     }
-    else
-    {
-        return [self berTagDescription];
-    }
+    return [self berTagDescription];
 }
-- (NSData*)berBody
+- (NSData*)berContents
 {
     [self raiseUnimplemented];
     return nil;
 }
-- (NSData*)berData
-{
-    NSMutableData *berData = [[NSMutableData  alloc] init];
-    [berData appendData:[self berHeader]];
-    [berData appendData:[self berBody]];
-    return berData;
-} 
 - (NSData*)lengthStorageData
 {
     if (self.obj)
     {
         return [self.obj lengthStorageData];
     }
-    else
-    {
-        return [self zeroByteData];
-    }
+    return [self zeroByteData];
 } 
+- (NSString*)berContentsDescription
+{
+    return [self.obj berContentsDescription];
+}
 @end
 
 @implementation BerTaggedCollection : BerTaggedObject
-/*- (uint8_t*)berTag 
+- (void)beMutable
 {
-    return [super berTag];
-}
-- (NSData*)berHeader
-{
-    return [super berHeader];
-}*/
-- (NSData*)berBody
-{
-    NSMutableData *berBody = [[NSMutableData  alloc] init];
+    NSMutableArray *newArray = [[NSMutableArray alloc] initWithCapacity:[self.collection count]];
+    [newArray addObjectsFromArray:self.collection];
+    self.collection = newArray;
     for (NSUInteger i = 0; i < [self.collection count]; i++) {
-        [berBody appendData:[[self.collection objectAtIndex:i] berData]];
+        [[self.collection objectAtIndex:i] beMutable];
     }
-    return berBody;
+}
+- (id)unwrapped
+{
+    for (NSUInteger i = 0; i < [self.collection count]; i++) {
+        BerTaggedObject *item = [self.collection objectAtIndex:i];
+        id unwrapped = [item unwrapped];
+        [self.collection replaceObjectAtIndex:i withObject:unwrapped];
+    }
+    return self.obj;
+}
+- (NSData*)berContents
+{
+    NSMutableData *berContents = [[NSMutableData  alloc] init];
+    for (NSUInteger i = 0; i < [self.collection count]; i++) {
+        [berContents appendData:[[self.collection objectAtIndex:i] berData]];
+    }
+    return berContents;
 }
 - (void)setCollection:(NSMutableArray*)aCollection
 {
@@ -362,6 +543,18 @@
 {
     [self.obj addObject:anObject];
 }
+-(id)objectAtIndex:(NSUInteger)index
+{
+    return [self.collection objectAtIndex:index];
+}
+
+#pragma mark - BERVisitor
+
+- (void)acceptBERVisitor:(BERVisitor*)visitor
+{
+    [visitor visitBERInteriorNode:(id)self];
+}
+
 @end
 
 
@@ -374,7 +567,7 @@
 {
     return self.obj;
 }
-- (NSData*)berBody
+- (NSData*)berContents
 {
     return self.data;
 }
@@ -413,6 +606,7 @@
 {
     return [self.string berContentsLengthBytesUsingEncoding:[self berStringEncoding]];
 }
+
 @end
 
 @implementation NSString (BasicEncodingRules)
@@ -446,6 +640,12 @@
 {
     return [self berDataUsingEncoding:NSUTF8StringEncoding];
 }
+
+#pragma mark - NSData Printing
+- (NSString*)berContentsDescription
+{
+    return self;
+}
 @end
 
 @implementation NSData (BasicEncodingRules)
@@ -465,12 +665,9 @@
     return integerTag;
 }
 
-- (NSData*)berData
+- (NSData*)berContents
 {
-    NSMutableData *berData = [[NSMutableData  alloc] init];
-    [berData appendData:[self berHeader]];
-    [berData appendData:self];
-    return berData;
+    return self;
 }
 
 #pragma mark - NSData Decoding
@@ -490,25 +687,33 @@
     
     switch (currentTag) 
     {
-        case BER_SEQUENCE_CONSTRUCTED:
+        /*case BER_SEQUENCE_CONSTRUCTED:
             return [self berDecodeAsArrayFrom:start to:end];
             break;
         case BER_SET_CONSTRUCTED:
             return [self berDecodeAsSetFrom:start to:end];
+            break;*/
+        case BER_SEQUENCE_CONSTRUCTED:
+        case BER_SET_CONSTRUCTED:
+            return [self berDecodeAsCollectionTagged:currentTag 
+                                                from:start 
+                                                  to:end];
             break;
-        case BER_INTEGER:
+        /*case BER_INTEGER:
             return [self berDecodeAsDataFrom:start to:end];
-            break;
-        case BER_UTF8STRING:
+            break;*/
+        /*case BER_UTF8STRING:
             return [self berDecodeAsStringFrom:start to:end];
-            break;
+            break;*/
         case BER_A0:
+        case BER_INTEGER:
         case BER_BIT_STRING:
         case BER_OBJECT_IDENTIFIER:
             return [self berDecodeAsDataTagged:currentTag 
                                           from:start 
                                             to:end];
             break;
+        case BER_UTF8STRING:
         case BER_IA5STRING:
         case BER_UTCTIME:
             return [self berDecodeAsStringTagged:currentTag 
@@ -578,7 +783,15 @@
 - (NSMutableSet*)berDecodeAsSetFrom:(NSUInteger)start to:(NSUInteger)end
 {
     BerTaggedCollection *newSet = [[BerTaggedCollection alloc] init];
-    newSet.berTagValue = (BER_SET | kBerTypeConstructed);
+    newSet.berTagValue = BER_SET_CONSTRUCTED;
+    newSet.collection = [[NSMutableArray alloc] init];
+    return [self berDecodeAsCollection:newSet from:start to:end];
+}
+
+- (NSMutableSet*)berDecodeAsCollectionTagged:(uint8_t)tagValue from:(NSUInteger)start to:(NSUInteger)end
+{
+    BerTaggedCollection *newSet = [[BerTaggedCollection alloc] init];
+    newSet.berTagValue = tagValue;
     newSet.collection = [[NSMutableArray alloc] init];
     return [self berDecodeAsCollection:newSet from:start to:end];
 }
@@ -616,6 +829,17 @@
     return newIA5String;
 }
 
+#pragma mark - NSData Printing
+- (NSString*)berContentsDescription
+{
+    uint8_t *bytes = (uint8_t*)[self bytes];
+    NSMutableString *aString = [[NSMutableString alloc] init];
+    for (NSUInteger i = 0; i < [self length]; i++) 
+    {
+        [aString appendFormat:@"%02X", bytes[i]];
+    }
+    return aString;
+}
 @end
 
 
@@ -638,14 +862,30 @@
     return bitfieldTag;
 }
 
-- (NSData*)berData
+- (NSData*)berContents
 {
-    NSMutableData *berData = [[NSMutableData  alloc] init];
-    [berData appendData:[self berHeader]];
+    NSMutableData *berContents = [[NSMutableData  alloc] init];
     for (NSUInteger i = 0; i < [self count]; i++) {
-        [berData appendData:[[self objectAtIndex:i] berData]];
+        // A BER_SEQUENCE's berContents data is the sum of
+        // all contained item's represented data.
+        // Basically, it does not include the length data
+        // That's why we're invoking berData below
+        NSData *itemData = [[self objectAtIndex:i] berData]; 
+        [berContents appendData:itemData];
     }
-    return berData;
+    return berContents;
+}
+
+#pragma mark - BERVisitor
+
+- (void)acceptBERVisitor:(BERVisitor*)visitor
+{
+    [visitor visitBERInteriorNode:(id)self];
+}
+
+- (NSArray*)collection
+{
+    return self;
 }
 
 @end

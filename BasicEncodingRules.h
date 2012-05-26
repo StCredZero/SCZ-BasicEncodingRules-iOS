@@ -90,64 +90,84 @@
 #define BER_SEQUENCE_CONSTRUCTED    (BER_SEQUENCE | kBerTypeConstructed)
 #define BER_SET_CONSTRUCTED         (BER_SET | kBerTypeConstructed)
 
+@interface BERVisitor : NSObject
+- (id)visitBERLeafNode:(id)leaf;
+- (id)visitBERInteriorNode:(id)node;
+@end
+
+@interface BERStripVisitor : BERVisitor
+{
+    NSMutableArray * currentCollection;
+    NSUInteger currentIndex;
+}
+@property (nonatomic, strong) NSMutableArray * currentCollection;
+@property (nonatomic, assign) NSUInteger currentIndex;
+@end
+
+
+@interface BERPrintVisitor : BERVisitor
+{
+    NSUInteger indentLevel;
+    NSMutableString * string;
+}
+@property (nonatomic, assign) NSUInteger indentLevel;
+@property (nonatomic, strong) NSMutableString * string;
+@end
 
 @interface NSObject (BasicEncodingRules)
-- (void)raiseUnimplemented;
-- (NSData*)zeroByteData;
+
+- (NSData*)berData;
 - (uint8_t*)berTag;
 - (NSData*)berHeader;
-- (NSData*)berData;
 - (NSUInteger)berLengthBytes;
 - (NSUInteger)berContentsLengthBytes;   
+- (NSData*)berContents;
+
 - (id)berDecode;
+
+//Utility Methods
+- (void)raiseUnimplemented;
+- (NSData*)zeroByteData;
+
+- (NSString*)berTagDescription;
+- (NSString*)berContentsDescription;
+
+- (void)acceptBERVisitor:(BERVisitor*)visitor;
 @end
 
 @interface NSString (BasicEncodingRules)
-- (uint8_t*)berTag;
-- (NSData*)berData;
-- (NSUInteger)berContentsLengthBytes;
 - (NSData*)berDataUsingEncoding:(NSStringEncoding)encoding;
 - (NSUInteger)berContentsLengthBytesUsingEncoding:(NSStringEncoding)encoding;
 @end
 
 @interface NSData (BasicEncodingRules)
-- (uint8_t*)berTag;
-- (NSData*)berData;
-- (NSUInteger)berContentsLengthBytes;
 @end
 
 @interface NSArray (BasicEncodingRules)
-- (uint8_t*)berTag;
-- (NSData*)berData;
-- (NSUInteger)berContentsLengthBytes;
 @end
 
 @interface NSNull (BasicEncodingRules)
-- (NSUInteger)berContentsLengthBytes;
-- (NSUInteger)berLengthBytes;
-- (uint8_t*)berTag;
-- (NSData*)lengthStorageData;
-- (NSData*)berData;
 @end
 
-@interface BerTaggedObject : NSObject {
+@interface BerNull : NSObject {
     uint8_t berTag[1];
-    id obj;
 }
 @property (nonatomic, assign) uint8_t berTagValue;
+- (void)beMutable;
+- (id)unwrapped;
+@end
+
+@interface BerTaggedObject : BerNull {
+    id obj;
+}
 @property (nonatomic, strong) id obj;
-- (uint8_t*)berTag;
-- (NSUInteger)berContentsLengthBytes;
-- (NSUInteger)berLengthBytes;
 - (NSString*)descriptionFormat;
-- (NSString*)description;
-- (NSData*)berBody;
-- (NSData*)berData;
 @end
 
 @interface BerTaggedCollection : BerTaggedObject {}
 @property (nonatomic, strong) NSMutableArray *collection;
 - (void)addObject:(id)anObject;
+-(id)objectAtIndex:(NSUInteger)index;
 @end
 
 @interface BerTaggedData : BerTaggedObject {}

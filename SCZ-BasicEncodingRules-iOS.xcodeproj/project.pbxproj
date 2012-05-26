@@ -13,6 +13,7 @@
 		18664EF4156DAD8000E29E64 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 18664EF2156DAD8000E29E64 /* InfoPlist.strings */; };
 		18664EF7156DAD8000E29E64 /* Unit_Tests.m in Sources */ = {isa = PBXBuildFile; fileRef = 18664EF6156DAD8000E29E64 /* Unit_Tests.m */; };
 		18664EFC156DB54100E29E64 /* BasicEncodingRules.m in Sources */ = {isa = PBXBuildFile; fileRef = 18664EDE156D773D00E29E64 /* BasicEncodingRules.m */; };
+		18A0CEAF156F76940064F0CB /* NSData+Base64.m in Sources */ = {isa = PBXBuildFile; fileRef = 18A0CEAE156F76940064F0CB /* NSData+Base64.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -28,6 +29,8 @@
 		18664EF5156DAD8000E29E64 /* Unit_Tests.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Unit_Tests.h; sourceTree = "<group>"; };
 		18664EF6156DAD8000E29E64 /* Unit_Tests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = Unit_Tests.m; sourceTree = "<group>"; };
 		18664EF8156DAD8000E29E64 /* Unit Tests-Prefix.pch */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Unit Tests-Prefix.pch"; sourceTree = "<group>"; };
+		18A0CEAD156F76940064F0CB /* NSData+Base64.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "NSData+Base64.h"; sourceTree = "<group>"; };
+		18A0CEAE156F76940064F0CB /* NSData+Base64.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "NSData+Base64.m"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -47,6 +50,8 @@
 		18664ED1156D741100E29E64 = {
 			isa = PBXGroup;
 			children = (
+				18A0CEAD156F76940064F0CB /* NSData+Base64.h */,
+				18A0CEAE156F76940064F0CB /* NSData+Base64.m */,
 				18664EDD156D773D00E29E64 /* BasicEncodingRules.h */,
 				18664EDE156D773D00E29E64 /* BasicEncodingRules.m */,
 				18664EDF156D773D00E29E64 /* README.md */,
@@ -175,6 +180,7 @@
 			files = (
 				18664EFC156DB54100E29E64 /* BasicEncodingRules.m in Sources */,
 				18664EF7156DAD8000E29E64 /* Unit_Tests.m in Sources */,
+				18A0CEAF156F76940064F0CB /* NSData+Base64.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -283,6 +289,7 @@
 				18664EFB156DAD8000E29E64 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};
