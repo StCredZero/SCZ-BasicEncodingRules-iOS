@@ -231,6 +231,11 @@
     return nil;
 }
 
+- (id)berParse {
+    [self raiseUnimplemented];
+    return nil;
+}
+
 #pragma mark - BERVisitor
 
 - (void)acceptBERVisitor:(BERVisitor*)visitor
@@ -629,12 +634,19 @@
 
 #pragma mark - NSData Decoding
 
-- (id)berDecode
+- (id)berParse
 {
     NSUInteger iterator = 0;
     return [self berDecodeFromStart:0 
                                  to:[self length] - 1
                            iterator:&iterator];
+}
+
+- (id)berDecode
+{
+    id decoded = [self berParse];
+    [decoded beMutable];
+    return [decoded unwrapped];
 }
 
 - (id)berDecodeFromStart:(NSUInteger)start to:(NSUInteger)end iterator:(NSUInteger*)iterator

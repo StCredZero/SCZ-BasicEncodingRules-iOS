@@ -73,9 +73,7 @@
     
     NSLog(@"testData: %@", [self hexadecimalFor:testData]);
     
-    BerTaggedObject *decodeArray = [testData berDecode];
-    [decodeArray beMutable];
-    NSMutableArray *testArray2 = [decodeArray unwrapped];
+    NSMutableArray *testArray2 = [testData berDecode];
     
     STAssertEqualObjects(testArray, testArray2,
                    @"Small items failed");
@@ -97,9 +95,7 @@
     [testArray addObject:item2];
     NSData *testData = [testArray berData];
         
-    BerTaggedObject *decodeArray = [testData berDecode];
-    [decodeArray beMutable];
-    NSMutableArray *testArray2 = [decodeArray unwrapped];
+    NSMutableArray *testArray2 = [testData berDecode];
     
     STAssertEqualObjects(testArray, testArray2,
                          @"Big items decode failed");
@@ -123,8 +119,7 @@
     [testArray addObject:item2];
     NSData *testData = [testArray berData];
     
-    BerTaggedObject *decodeArray = [testData berDecode];
-    NSMutableArray *testArray2 = [decodeArray unwrapped];
+    NSMutableArray *testArray2 = [testData berDecode];
     
     STAssertEqualObjects(testArray, testArray2,
                          @"Nested arrays failed");
@@ -142,11 +137,11 @@
     NSData *testData = [NSData dataWithBytes:certBytes length:471];
     NSString *testDataBase64 = [testData base64EncodedString];
     NSLog(@"base64: %@", testDataBase64);
-    NSMutableArray *result = [testData berDecode];
-    NSData *testData2 = [result berData];
+    BerTaggedObject *parsed = [testData berParse];
+    NSData *testData2 = [parsed berData];
     
     BERPrintVisitor *printer = [[BERPrintVisitor alloc] init];
-    [printer visitBERInteriorNode:result];
+    [printer visitBERInteriorNode:parsed];
     NSLog(@"result: %@", printer.string);
     STAssertEqualObjects(testData, testData2,
                          @"Cert binaries are not the same");

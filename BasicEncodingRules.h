@@ -116,6 +116,7 @@
 - (NSData*)berContents;
 
 - (id)berDecode;
+- (id)berParse;
 
 //Utility Methods
 - (void)raiseUnimplemented;
