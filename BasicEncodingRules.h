@@ -95,22 +95,14 @@
 - (id)visitBERInteriorNode:(id)node;
 @end
 
-@interface BERStripVisitor : BERVisitor
-{
-    NSMutableArray * currentCollection;
-    NSUInteger currentIndex;
-}
-@property (nonatomic, strong) NSMutableArray * currentCollection;
-@property (nonatomic, assign) NSUInteger currentIndex;
-@end
-
-
 @interface BERPrintVisitor : BERVisitor
 {
     NSUInteger indentLevel;
+    BOOL isIndenting;
     NSMutableString * string;
 }
 @property (nonatomic, assign) NSUInteger indentLevel;
+@property (nonatomic, assign) BOOL isIndenting;
 @property (nonatomic, strong) NSMutableString * string;
 @end
 
@@ -149,18 +141,18 @@
 @interface NSNull (BasicEncodingRules)
 @end
 
-@interface BerNull : NSObject {
+@interface BerTaggedObject : NSObject {
     uint8_t berTag[1];
+    id obj;
+    NSUInteger start;
+    NSUInteger end;
 }
 @property (nonatomic, assign) uint8_t berTagValue;
+@property (nonatomic, strong) id obj;
+@property (nonatomic, assign) NSUInteger start;
+@property (nonatomic, assign) NSUInteger end;
 - (void)beMutable;
 - (id)unwrapped;
-@end
-
-@interface BerTaggedObject : BerNull {
-    id obj;
-}
-@property (nonatomic, strong) id obj;
 - (NSString*)descriptionFormat;
 @end
 

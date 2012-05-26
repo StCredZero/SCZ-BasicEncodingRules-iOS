@@ -124,8 +124,6 @@
     NSData *testData = [testArray berData];
     
     BerTaggedObject *decodeArray = [testData berDecode];
-    //BERStripVisitor *stripper = [[BERStripVisitor alloc] init];
-    //NSMutableArray *testArray2 = [stripper visitBERInteriorNode:decodeArray];
     NSMutableArray *testArray2 = [decodeArray unwrapped];
     
     STAssertEqualObjects(testArray, testArray2,

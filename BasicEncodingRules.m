@@ -44,93 +44,88 @@
 @end
 
 
-@implementation BERStripVisitor : BERVisitor
-@synthesize currentCollection;
-@synthesize currentIndex;
-- (id)unwrapTaggedObject:(BerTaggedObject*)tagged
-{
-    if (self.currentCollection)
-    {
-        [self.currentCollection replaceObjectAtIndex:self.currentIndex 
-                                          withObject:tagged.obj];
-    }
-    return tagged.obj;
-}
-- (NSMutableArray*)newMutableArrayCopy:(NSArray*)oldArray
-{
-    NSMutableArray *newArray = [[NSMutableArray alloc] initWithCapacity:[oldArray count]];
-    self.currentCollection = newArray;
-    [self.currentCollection addObjectsFromArray:oldArray];
-    return newArray;
-}
-- (id)visitBERLeafNode:(id)leafNode
-{
-    BerTaggedObject *taggedObj = leafNode;
-    return [self unwrapTaggedObject:taggedObj];
-}
-- (id)visitBERInteriorNode:(id)node
-{
-    BerTaggedCollection *taggedCollection = node;
-    NSInteger currentCount = [taggedCollection.collection count];
-    
-    NSMutableArray *parent = self.currentCollection;
-    NSUInteger parentIndex = self.currentIndex;
-    NSMutableArray *newArray = [self newMutableArrayCopy:taggedCollection.collection];
-
-    for (NSInteger i = 0; i < currentCount; i++) 
-    {
-        self.currentIndex = i;
-        [[taggedCollection objectAtIndex:i] acceptBERVisitor:self];
-    }
-    
-    self.currentCollection = parent;
-    self.currentIndex = parentIndex;
-    [self unwrapTaggedObject:taggedCollection];
-    return newArray;
-}
-@end
-
-
 @implementation BERPrintVisitor : BERVisitor
 @synthesize indentLevel;
+@synthesize isIndenting;
 @synthesize string;
 - (id) init
 {
     if (self = [super init])
     {
         self.indentLevel = 0;
+        self.isIndenting = YES;
         self.string = [[NSMutableString alloc] init];
     }
     return self;
 }
 - (id)visitBERLeafNode:(id)leaf
 {
+    NSString *tempString = [leaf berContentsDescription];
+
     [self berIndent];
-    [self.string appendFormat:@"%@ %@",
-     [leaf berTagDescription],
-     [leaf berContentsDescription]];
+    [self.string appendFormat:@"%@ ", [leaf berTagDescription]];
+    if([tempString length] > 80) 
+    {
+        [self.string appendFormat:@"\n"];
+        [self increaseIndent];
+        [self berIndent];
+    }
+    for (NSUInteger i = 0; i < [tempString length]; i++)
+    {
+        [self.string appendFormat:@"%c", [tempString characterAtIndex:i]];
+        if ((i > 0) && (i % 80 == 0)) 
+        {
+            [self.string appendFormat:@"\n"];
+            [self berIndent];
+        }
+    }
+    if([tempString length] > 80) 
+    {
+        [self decreaseIndent];
+    }
+
     return nil;
 }
 - (id)visitBERInteriorNode:(id)node
 {
-    [self berIndent];
-    [self.string appendFormat:@"%@ (\n", [node berTagDescription]];
-    [self increaseIndent];
-    for (id childNode in [node collection]) 
+    NSString *initialDelimiter = @"\n";
+    NSString *middleDelimiter = @"\n";
+    BOOL indentDelimiter = YES;
+    BOOL indentState = self.isIndenting;
+    if ([node berContentsLengthBytes] <= 20)
     {
+        initialDelimiter = @"";
+        middleDelimiter = @", ";
+        indentDelimiter = NO;
+    }
+    [self berIndent];
+    if ( ! indentDelimiter) self.isIndenting = NO;
+
+    [self.string appendFormat:@"%@ ( %@", 
+     [node berTagDescription],
+     initialDelimiter];
+    [self increaseIndent];
+    NSUInteger count = [[node collection] count];
+    for (NSUInteger i = 0; i < count; i++) 
+    {
+        id childNode = [[node collection] objectAtIndex:i];
         [childNode acceptBERVisitor:self];
-        [self.string appendFormat:@"\n"];
+        if (i < count - 1) [self.string appendFormat:middleDelimiter];
     }
     [self decreaseIndent];
-    [self berIndent];
-    [self.string appendFormat:@")"];
+    [self.string appendFormat:@" )"];
+    self.isIndenting = indentState;
+
     return nil;
 }
 - (void)berIndent
 {
-    for (NSUInteger i = 0; i < self.indentLevel; i++)
+    if (self.isIndenting)
     {
-        [self.string appendFormat:@"%@", @"    "];
+        for (NSUInteger i = 0; i < self.indentLevel; i++)
+        {
+            [self.string appendFormat:@"%@", @"    "];
+        }
     }
 }
 - (void)increaseIndent
@@ -198,7 +193,6 @@
     for (NSUInteger tempLength = myLength; tempLength > 0; lengthBytes++) {
         tempLength >>= 8;
     }
-    [self raiseBerExceptionForLengthZero:lengthBytes];
     return lengthBytes;
 }
 
@@ -207,10 +201,8 @@
     NSMutableData *lengthStorageData = [[NSMutableData alloc] init];
     uint8_t lengthBytesTag[1];
     NSUInteger contentsLength = [self berContentsLengthBytes];
-    [self raiseBerExceptionForLengthZero:contentsLength];
     if (contentsLength > 0x7F) {
         NSUInteger lengthStorageBytes = [self lengthBytesLog8];
-        [self raiseBerExceptionForLengthZero:lengthStorageBytes];
         if (lengthStorageBytes > sizeof(NSUInteger))
             [NSException 
              raise:@"Invalid length value" 
@@ -267,13 +259,6 @@
     [NSException 
      raise:@"Invalid BER translation" 
      format:@"unimplemented for this type"];
-}
-
-- (void)raiseBerExceptionForLengthZero:(NSInteger)lengthBytes {
-    if (lengthBytes == 0)
-        [NSException 
-         raise:@"Invalid length value" 
-         format:@"byte length of 0 is invalid"];
 }
 
 - (NSString*)berTagDescription
@@ -395,14 +380,17 @@
 @end
 
 #pragma mark - BER Subclasses
-@implementation BerNull : NSObject
+@implementation BerTaggedObject : NSObject
+@synthesize obj;
+@synthesize start;
+@synthesize end;
 - (void)beMutable
 {
-
+    
 }
 - (id)unwrapped
 {
-    return [NSNull null];
+    return self.obj;
 }
 - (uint8_t*)berTag
 {
@@ -415,35 +403,6 @@
 - (uint8_t)berTagValue
 {
     return berTag[0];
-}
-- (NSUInteger)berContentsLengthBytes
-{
-    return 0;
-}
-- (NSUInteger)berLengthBytes
-{
-    return 2;
-}
-- (NSData*)lengthStorageData
-{
-    return [self zeroByteData];
-} 
-
-- (NSString*)description
-{
-    return [self berTagDescription];
-}
-@end
-
-@implementation BerTaggedObject : BerNull
-@synthesize obj;
-- (void)beMutable
-{
-    
-}
-- (id)unwrapped
-{
-    return self.obj;
 }
 - (BOOL)isEqual:(id)other
 {   
@@ -613,7 +572,6 @@
 - (NSUInteger)berContentsLengthBytesUsingEncoding:(NSStringEncoding)encoding
 {
     NSUInteger myLength = [self lengthOfBytesUsingEncoding:encoding];
-    [self raiseBerExceptionForLengthZero:myLength];
     return myLength;
 }
 
@@ -655,7 +613,6 @@
 - (NSUInteger)berContentsLengthBytes
 {
     NSUInteger myLength = [self length];
-    [self raiseBerExceptionForLengthZero:myLength];
     return myLength;
 }
 
@@ -687,28 +644,17 @@
     
     switch (currentTag) 
     {
-        /*case BER_SEQUENCE_CONSTRUCTED:
-            return [self berDecodeAsArrayFrom:start to:end];
-            break;
-        case BER_SET_CONSTRUCTED:
-            return [self berDecodeAsSetFrom:start to:end];
-            break;*/
+        case BER_A0:
         case BER_SEQUENCE_CONSTRUCTED:
         case BER_SET_CONSTRUCTED:
             return [self berDecodeAsCollectionTagged:currentTag 
                                                 from:start 
                                                   to:end];
             break;
-        /*case BER_INTEGER:
-            return [self berDecodeAsDataFrom:start to:end];
-            break;*/
-        /*case BER_UTF8STRING:
-            return [self berDecodeAsStringFrom:start to:end];
-            break;*/
-        case BER_A0:
         case BER_INTEGER:
         case BER_BIT_STRING:
         case BER_OBJECT_IDENTIFIER:
+        case BER_NULL:
             return [self berDecodeAsDataTagged:currentTag 
                                           from:start 
                                             to:end];
@@ -719,10 +665,6 @@
             return [self berDecodeAsStringTagged:currentTag 
                                             from:start 
                                               to:end];
-            break;
-        case BER_NULL:
-            return [NSNull null];
-            *iterator += 1;
             break;
         default:
             [self raiseUnimplemented];
@@ -774,25 +716,13 @@
     return collection;
 }
 
-- (NSMutableArray*)berDecodeAsArrayFrom:(NSUInteger)start to:(NSUInteger)end
-{
-    NSMutableArray *newArray = [[NSMutableArray alloc] init];
-    return [self berDecodeAsCollection:newArray from:start to:end];
-}
-
-- (NSMutableSet*)berDecodeAsSetFrom:(NSUInteger)start to:(NSUInteger)end
-{
-    BerTaggedCollection *newSet = [[BerTaggedCollection alloc] init];
-    newSet.berTagValue = BER_SET_CONSTRUCTED;
-    newSet.collection = [[NSMutableArray alloc] init];
-    return [self berDecodeAsCollection:newSet from:start to:end];
-}
-
 - (NSMutableSet*)berDecodeAsCollectionTagged:(uint8_t)tagValue from:(NSUInteger)start to:(NSUInteger)end
 {
     BerTaggedCollection *newSet = [[BerTaggedCollection alloc] init];
     newSet.berTagValue = tagValue;
     newSet.collection = [[NSMutableArray alloc] init];
+    newSet.start = start;
+    newSet.end = end;
     return [self berDecodeAsCollection:newSet from:start to:end];
 }
               
@@ -809,6 +739,8 @@
     BerTaggedData *newData = [[BerTaggedData alloc] init];
     newData.data = [self berDecodeAsDataFrom:start to:end];
     newData.berTagValue = tagValue;
+    newData.start = start;
+    newData.end = end;
     return newData;
 }
 
@@ -823,10 +755,12 @@
 
 - (BerTaggedString*)berDecodeAsStringTagged:(uint8_t)tagValue from:(NSUInteger)start to:(NSUInteger)end
 {
-    BerTaggedString *newIA5String = [[BerTaggedString alloc] init];
-    newIA5String.string = [self berDecodeAsStringFrom:start to:end];
-    newIA5String.berTagValue = tagValue;
-    return newIA5String;
+    BerTaggedString *newString = [[BerTaggedString alloc] init];
+    newString.string = [self berDecodeAsStringFrom:start to:end];
+    newString.berTagValue = tagValue;
+    newString.start = start;
+    newString.end = end;
+    return newString;
 }
 
 #pragma mark - NSData Printing
