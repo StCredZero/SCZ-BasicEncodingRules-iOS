@@ -647,21 +647,39 @@
         case BER_A0:
         case BER_SEQUENCE_CONSTRUCTED:
         case BER_SET_CONSTRUCTED:
+        case BER_SEQUENCE:
+        case BER_SET:
             return [self berDecodeAsCollectionTagged:currentTag 
                                                 from:start 
                                                   to:end];
             break;
+        case BER_EOC:
+        case BER_BOOLEAN:
         case BER_INTEGER:
         case BER_BIT_STRING:
-        case BER_OBJECT_IDENTIFIER:
+        case BER_OCTET_STRING:
         case BER_NULL:
+        case BER_OBJECT_IDENTIFIER:
+        case BER_OBJECT_DESCRIPTOR:
+        case BER_RELATIVE_OID:
             return [self berDecodeAsDataTagged:currentTag 
                                           from:start 
                                             to:end];
             break;
         case BER_UTF8STRING:
+        case BER_NUMERICSTRING:
+        case BER_PRINTABLESTRING:
+        case BER_T61STRING:
+        case BER_VIDEOTEXSTRING:
         case BER_IA5STRING:
         case BER_UTCTIME:
+        case BER_GENERALIZEDTIME:
+        case BER_GRAPHICSTRING:
+        case BER_VISIBLESTRING:
+        case BER_GENERALSTRING:
+        case BER_UNIVERSALSTRING:
+        case BER_CHARACTER_STRING:
+        case BER_BMPSTRING:
             return [self berDecodeAsStringTagged:currentTag 
                                             from:start 
                                               to:end];

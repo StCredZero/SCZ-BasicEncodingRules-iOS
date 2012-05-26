@@ -64,7 +64,7 @@
 #define BER_EXTERNAL            0x08
 #define BER_REAL                0x09
 #define BER_ENUMERATED          0x0A
-#define BER_EMBEDDED_PDV            0x0B
+#define BER_EMBEDDED_PDV        0x0B
 #define BER_UTF8STRING          0x0C
 #define BER_RELATIVE_OID        0x0D
 #define BER_RESERVED0X0E        0x0E
