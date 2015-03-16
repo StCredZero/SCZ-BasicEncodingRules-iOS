@@ -548,7 +548,7 @@
 }
 - (NSString*)descriptionFormat
 {
-    return [NSString stringWithString:@"%@\"%@\""];
+    return @"%@\"%@\"";
 }
 - (NSStringEncoding)berStringEncoding
 {
