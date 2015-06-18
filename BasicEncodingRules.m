@@ -108,7 +108,7 @@
     {
         id childNode = [[node collection] objectAtIndex:i];
         [childNode acceptBERVisitor:self];
-        if (i < count - 1) [self.string appendFormat:middleDelimiter];
+        if (i < count - 1) [self.string appendString:middleDelimiter];
     }
     [self decreaseIndent];
     [self.string appendFormat:@" )"];
