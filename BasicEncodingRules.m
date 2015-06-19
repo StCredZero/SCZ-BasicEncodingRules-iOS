@@ -101,16 +101,14 @@
     [self berIndent];
     if ( ! indentDelimiter) self.isIndenting = NO;
 
-    [self.string appendFormat:@"%@ ( %@", 
-     [node berTagDescription],
-     initialDelimiter];
+    [self.string appendFormat:@"%@ ( %@", [node berTagDescription], initialDelimiter];
     [self increaseIndent];
     NSUInteger count = [[node collection] count];
     for (NSUInteger i = 0; i < count; i++) 
     {
         id childNode = [[node collection] objectAtIndex:i];
         [childNode acceptBERVisitor:self];
-        if (i < count - 1) [self.string appendFormat:middleDelimiter];
+        if (i < count - 1) [self.string appendString:middleDelimiter];
     }
     [self decreaseIndent];
     [self.string appendFormat:@" )"];
@@ -206,7 +204,7 @@
         if (lengthStorageBytes > sizeof(NSUInteger))
             [NSException 
              raise:@"Invalid length value" 
-             format:@"length storage greater than %d bytes is invalid", lengthStorageBytes];
+             format:@"length storage greater than %@ bytes is invalid", @(lengthStorageBytes)];
         lengthBytesTag[0] = 0x80 + lengthStorageBytes;
         [lengthStorageData appendBytes:lengthBytesTag length:1];
         uint8_t temp[sizeof(NSUInteger)];
@@ -437,7 +435,7 @@
 }
 - (NSString*)descriptionFormat
 {
-    return [NSString stringWithString:@"<%@ %@>"];
+    return @"<%@ %@>";
 }
 - (NSString*)description
 {
@@ -548,7 +546,7 @@
 }
 - (NSString*)descriptionFormat
 {
-    return [NSString stringWithString:@"%@\"%@\""];
+    return @"%@\"%@\"";
 }
 - (NSStringEncoding)berStringEncoding
 {
